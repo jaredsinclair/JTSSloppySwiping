@@ -154,6 +154,10 @@ private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransiti
     
     let operation: UINavigationControllerOperation
     
+    private let frontContainerView: FrontContainerView = {
+        return FrontContainerView(frame: CGRectZero)
+        }()
+    
     init(operation: UINavigationControllerOperation) {
         self.operation = operation
     }
@@ -182,29 +186,37 @@ private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransiti
                 return
         }
         
-        toView.frame = container.bounds
-        toView.transform = CGAffineTransformMakeTranslation(toView.width, 0)
+        let containerBounds = container.bounds
         
-        fromView.frame = container.bounds
+        self.frontContainerView.frame = containerBounds
+        
+        let maxOffset = containerBounds.size.width * maxBackViewTranslationPercentage
+        
+        toView.frame = self.frontContainerView.bounds
+        self.frontContainerView.addSubview(toView)
+        self.frontContainerView.transform = CGAffineTransformMakeTranslation(containerBounds.size.width, 0)
+        self.frontContainerView.dropShadowView.alpha = 0.0
+        
+        fromView.frame = containerBounds
         fromView.transform = CGAffineTransformIdentity
         
-        let shadowView = UIView(frame: container.bounds)
-        shadowView.backgroundColor = UIColor.blackColor()
-        shadowView.alpha = 0
+        let backOverlayView = UIView(frame: containerBounds)
+        backOverlayView.backgroundColor = UIColor.blackColor()
+        backOverlayView.alpha = 0
         
         container.addSubview(fromView)
-        container.addSubview(shadowView)
-        container.addSubview(toView)
+        container.addSubview(backOverlayView)
+        container.addSubview(self.frontContainerView)
         
         UIView.animateWithDuration(defaultPushPopDuration,
             animations: { () -> Void in
-                shadowView.alpha = 0.5
-                let maxOffset = container.width * maxBackViewTranslationPercentage
+                backOverlayView.alpha = 0.5
                 fromView.transform = CGAffineTransformMakeTranslation(-maxOffset, 0)
-                toView.transform = CGAffineTransformIdentity
+                self.frontContainerView.transform = CGAffineTransformIdentity
+                self.frontContainerView.dropShadowView.alpha = 1.0
             }) { (completed) -> Void in
                 fromView.transform = CGAffineTransformIdentity
-                shadowView.removeFromSuperview()
+                backOverlayView.removeFromSuperview()
                 transitionContext.completeTransition(true)
         }
     }
@@ -216,29 +228,38 @@ private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransiti
                 return
         }
         
-        let maxOffset = container.width * maxBackViewTranslationPercentage
-        toView.frame = container.bounds
+        let containerBounds = container.bounds
+        
+        self.frontContainerView.frame = containerBounds
+        
+        let maxOffset = containerBounds.size.width * maxBackViewTranslationPercentage
+        
+        fromView.frame = self.frontContainerView.bounds
+        self.frontContainerView.addSubview(fromView)
+        self.frontContainerView.transform = CGAffineTransformIdentity
+        
+        toView.frame = containerBounds
         toView.transform = CGAffineTransformMakeTranslation(-maxOffset, 0)
         
-        fromView.frame = container.bounds
-        fromView.transform = CGAffineTransformIdentity
-        
-        let shadowView = UIView(frame: container.bounds)
-        shadowView.backgroundColor = UIColor.blackColor()
-        shadowView.alpha = 0.5
+        let backOverlayView = UIView(frame: containerBounds)
+        backOverlayView.backgroundColor = UIColor.blackColor()
+        backOverlayView.alpha = 0.5
         
         container.addSubview(toView)
-        container.addSubview(shadowView)
-        container.addSubview(fromView)
+        container.addSubview(backOverlayView)
+        container.addSubview(self.frontContainerView)
         
         UIView.animateWithDuration(defaultPushPopDuration,
             animations: { () -> Void in
-                shadowView.alpha = 0
-                fromView.transform = CGAffineTransformMakeTranslation(fromView.width, 0)
+                backOverlayView.alpha = 0
+                self.frontContainerView.transform = CGAffineTransformMakeTranslation(fromView.width, 0)
                 toView.transform = CGAffineTransformIdentity
+                self.frontContainerView.dropShadowView.alpha = 0.0
             }) { (completed) -> Void in
-                fromView.transform = CGAffineTransformIdentity
-                shadowView.removeFromSuperview()
+                self.frontContainerView.transform = CGAffineTransformIdentity
+                self.frontContainerView.removeFromSuperview()
+                fromView.removeFromSuperview()
+                backOverlayView.removeFromSuperview()
                 transitionContext.completeTransition(true)
         }
     }
@@ -255,12 +276,17 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
     
     private var activeContext: UIViewControllerContextTransitioning? = nil
     private var activeDuration: NSTimeInterval? = nil
-    private let shadowView: UIView = {
-        let shadowView = UIView(frame: CGRectZero)
-        shadowView.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
-        shadowView.alpha = 1.0
-        return shadowView
+    
+    private let backOverlayView: UIView = {
+        let backOverlayView = UIView(frame: CGRectZero)
+        backOverlayView.backgroundColor = UIColor(white: 0.0, alpha: 0.25)
+        backOverlayView.alpha = 1.0
+        return backOverlayView
         }()
+    
+    private let frontContainerView: FrontContainerView = {
+        return FrontContainerView(frame: CGRectZero)
+    }()
     
     // MARK: UIViewControllerAnimatedTransitioning
     
@@ -293,25 +319,30 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
                 return
         }
         
-        let maxOffset = container.width * maxBackViewTranslationPercentage
-        toView.frame = container.bounds
+        let containerBounds = container.bounds
+        
+        self.frontContainerView.frame = containerBounds
+        
+        let maxOffset = containerBounds.size.width * maxBackViewTranslationPercentage
+
+        fromView.frame = self.frontContainerView.bounds
+        self.frontContainerView.addSubview(fromView)
+        self.frontContainerView.transform = CGAffineTransformIdentity
+        
+        toView.frame = containerBounds
         toView.transform = CGAffineTransformMakeTranslation(-maxOffset, 0)
         
-        fromView.frame = container.bounds
-        fromView.transform = CGAffineTransformIdentity
-        
-        self.shadowView.frame = container.bounds
+        self.backOverlayView.frame = containerBounds
         
         container.addSubview(toView)
-        container.addSubview(self.shadowView)
-        container.addSubview(fromView)
+        container.addSubview(self.backOverlayView)
+        container.addSubview(self.frontContainerView)
     }
     
     func updateViewsWithTranslation(translation: CGPoint) {
         
         guard let transitionContext = self.activeContext,
             container = transitionContext.containerView(),
-            fromView = transitionContext.viewForKey(UITransitionContextFromViewKey),
             toView = transitionContext.viewForKey(UITransitionContextToViewKey) else {
                 return
         }
@@ -324,9 +355,10 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         let maxToViewOffset = maxDistance * maxBackViewTranslationPercentage
         let resolvedToViewOffset = -maxToViewOffset + (maxToViewOffset * percent)
         
-        fromView.transform = CGAffineTransformMakeTranslation(maxFromViewOffset * percent, 0)
+        self.frontContainerView.transform = CGAffineTransformMakeTranslation(maxFromViewOffset * percent, 0)
+        self.frontContainerView.dropShadowView.alpha = (1.0 - percent)
         toView.transform = CGAffineTransformMakeTranslation(resolvedToViewOffset, 0)
-        self.shadowView.alpha = (1.0 - percent)
+        self.backOverlayView.alpha = (1.0 - percent)
         
         self.activeContext?.updateInteractiveTransition(percent)
     }
@@ -379,13 +411,16 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
             delay: 0,
             options: options,
             animations: { () -> Void in
-                fromView.transform = CGAffineTransformIdentity
+                self.frontContainerView.transform = CGAffineTransformIdentity
                 toView.transform = CGAffineTransformMakeTranslation(resolvedToViewOffset, 0)
-                self.shadowView.alpha = 1.0
+                self.backOverlayView.alpha = 1.0
+                self.frontContainerView.dropShadowView.alpha = 1.0
             },
             completion: { (completed) -> Void in
                 toView.transform = CGAffineTransformIdentity
-                self.shadowView.removeFromSuperview()
+                container.addSubview(fromView)
+                self.backOverlayView.removeFromSuperview()
+                self.frontContainerView.removeFromSuperview()
                 self.activeContext?.cancelInteractiveTransition()
                 self.activeContext?.transitionWasCancelled()
                 self.activeContext?.completeTransition(false)
@@ -423,13 +458,16 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
             delay: 0,
             options: options,
             animations: { () -> Void in
-                fromView.transform = CGAffineTransformMakeTranslation(maxDistance, 0)
+                self.frontContainerView.transform = CGAffineTransformMakeTranslation(maxDistance, 0)
                 toView.transform = CGAffineTransformIdentity
-                self.shadowView.alpha = 0.0
+                self.backOverlayView.alpha = 0.0
+                self.frontContainerView.dropShadowView.alpha = 0.0
             },
             completion: { (completed) -> Void in
-                fromView.transform = CGAffineTransformIdentity
-                self.shadowView.removeFromSuperview()
+                fromView.removeFromSuperview()
+                self.frontContainerView.transform = CGAffineTransformIdentity
+                self.frontContainerView.removeFromSuperview()
+                self.backOverlayView.removeFromSuperview()
                 self.activeContext?.finishInteractiveTransition()
                 self.activeContext?.completeTransition(true)
                 completion()
@@ -449,4 +487,56 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         return (NSTimeInterval)(max(min(maxDuration, d / v), minDuration))
     }
     
+}
+
+private class FrontContainerView: UIView {
+    
+    private let dropShadowView: UIView = {
+        
+        let w: CGFloat = 20.0
+        
+        let stretchableShadow = UIImageView(frame: CGRectMake(0, 0, w, 1))
+        stretchableShadow.backgroundColor = UIColor.clearColor()
+        stretchableShadow.alpha = 1.0
+        stretchableShadow.contentMode = .ScaleToFill
+        stretchableShadow.autoresizingMask = [.FlexibleHeight, .FlexibleRightMargin]
+        
+        let contextSize = CGSizeMake(w, 1)
+        UIGraphicsBeginImageContextWithOptions(contextSize, false, 0)
+        let context = UIGraphicsGetCurrentContext()
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let colors: CFArray = [
+            UIColor(white: 0.0, alpha: 0.0).CGColor,
+            UIColor(white: 0.0, alpha: 0.25).CGColor,
+            UIColor(white: 0.0, alpha: 0.5).CGColor,
+        ]
+        let locations: [CGFloat] = [0, 0.66, 1.0]
+        let options = CGGradientDrawingOptions()
+        if let gradient = CGGradientCreateWithColors(colorSpace, colors, locations) {
+            CGContextDrawLinearGradient(context, gradient, CGPointMake(0, 0), CGPointMake(w, 0), options)
+            stretchableShadow.image = UIGraphicsGetImageFromCurrentImageContext()
+        }
+        UIGraphicsEndImageContext()
+        
+        return stretchableShadow
+        
+        }()
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        
+        var dropShadowFrame = self.dropShadowView.frame
+        dropShadowFrame.origin.x = 0 - dropShadowFrame.size.width
+        dropShadowFrame.origin.y = 0
+        dropShadowFrame.size.height = self.bounds.size.height
+        self.dropShadowView.frame = dropShadowFrame
+        self.addSubview(self.dropShadowView)
+        
+        self.clipsToBounds = false
+        self.backgroundColor = UIColor.clearColor()
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 }
