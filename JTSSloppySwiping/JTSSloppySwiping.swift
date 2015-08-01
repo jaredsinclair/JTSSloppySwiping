@@ -140,8 +140,11 @@ extension JTSSloppySwiping: UINavigationControllerDelegate {
     
 }
 
-private let defaultDuration: NSTimeInterval = 0.33
+private let defaultPushPopDuration: NSTimeInterval = 0.33
+private let defaultCancelPopDuration = defaultPushPopDuration / 2.0
 private let maxBackViewTranslationPercentage: CGFloat = 0.25
+private let minimumDismissalPercentage: CGFloat = 0.5
+private let minimumThresholdVelocity: CGFloat = 100.0
 
 private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransitioning {
     
@@ -154,7 +157,7 @@ private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransiti
     // MARK: UIViewControllerAnimatedTransitioning
     
     @objc func transitionDuration(transitionContext: UIViewControllerContextTransitioning?) -> NSTimeInterval {
-        return defaultDuration
+        return defaultPushPopDuration
     }
 
     @objc func animateTransition(transitionContext: UIViewControllerContextTransitioning) {
@@ -189,7 +192,7 @@ private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransiti
         container.addSubview(shadowView)
         container.addSubview(toView)
         
-        UIView.animateWithDuration(defaultDuration,
+        UIView.animateWithDuration(defaultPushPopDuration,
             animations: { () -> Void in
                 shadowView.alpha = 0.5
                 let maxOffset = container.width * maxBackViewTranslationPercentage
@@ -224,7 +227,7 @@ private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransiti
         container.addSubview(shadowView)
         container.addSubview(fromView)
         
-        UIView.animateWithDuration(defaultDuration,
+        UIView.animateWithDuration(defaultPushPopDuration,
             animations: { () -> Void in
                 shadowView.alpha = 0
                 fromView.transform = CGAffineTransformMakeTranslation(fromView.width, 0)
@@ -261,7 +264,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         if let duration = self.activeDuration {
             return duration
         }
-        return defaultDuration
+        return defaultPushPopDuration
     }
     
     @objc func animateTransition(transitionContext: UIViewControllerContextTransitioning) {
@@ -333,7 +336,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         
         let percent = self.percentDismissedForTranslation(translation, container: container)
         
-        return ((percent < 0.25 && velocity.x < 100.0) || velocity.x < 0)
+        return ((percent < minimumDismissalPercentage && velocity.x < 100.0) || velocity.x < 0)
     }
     
     func cancelWithTranslation(translation: CGPoint, velocity: CGPoint, completion: () -> Void) {
@@ -348,15 +351,25 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         let maxDistance = container.width
         let maxToViewOffset = maxDistance * maxBackViewTranslationPercentage
         let resolvedToViewOffset = -maxToViewOffset
-        let duration = self.durationForDistance(distance: maxDistance, velocity: abs(velocity.x))
-        self.activeDuration = duration
-        
+        let duration: NSTimeInterval
         let options: UIViewAnimationOptions
-        if abs(velocity.x) > 0 {
+        
+        if abs(velocity.x) > minimumThresholdVelocity {
             options = .CurveEaseOut
-        } else {
-            options = .CurveEaseInOut
+            let naiveDuration = self.durationForDistance(distance: maxDistance, velocity: abs(velocity.x))
+            let isFlickingShutEarly = translation.x < maxDistance * minimumDismissalPercentage
+            if (naiveDuration > defaultCancelPopDuration && isFlickingShutEarly) {
+                duration = defaultCancelPopDuration
+            } else {
+                duration = naiveDuration
+            }
         }
+        else {
+            options = .CurveEaseInOut
+            duration = defaultCancelPopDuration
+        }
+        
+        self.activeDuration = duration
         
         UIView.animateWithDuration(duration,
             delay: 0,
@@ -388,15 +401,19 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         }
         
         let maxDistance = container.width
-        let duration = self.durationForDistance(distance: maxDistance, velocity: abs(velocity.x))
-        self.activeDuration = duration
+        let duration: NSTimeInterval
         
         let options: UIViewAnimationOptions
         if abs(velocity.x) > 0 {
             options = .CurveEaseOut
-        } else {
-            options = .CurveEaseInOut
+            duration = self.durationForDistance(distance: maxDistance, velocity: abs(velocity.x))
         }
+        else {
+            options = .CurveEaseInOut
+            duration = defaultPushPopDuration
+        }
+        
+        self.activeDuration = duration
         
         UIView.animateWithDuration(duration,
             delay: 0,
