@@ -279,7 +279,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
     
     private let backOverlayView: UIView = {
         let backOverlayView = UIView(frame: CGRectZero)
-        backOverlayView.backgroundColor = UIColor(white: 0.0, alpha: 0.25)
+        backOverlayView.backgroundColor = UIColor(white: 0.0, alpha: 0.16)
         backOverlayView.alpha = 1.0
         return backOverlayView
         }()
@@ -493,7 +493,7 @@ private class FrontContainerView: UIView {
     
     private let dropShadowView: UIView = {
         
-        let w: CGFloat = 20.0
+        let w: CGFloat = 16.0
         
         let stretchableShadow = UIImageView(frame: CGRectMake(0, 0, w, 1))
         stretchableShadow.backgroundColor = UIColor.clearColor()
@@ -507,10 +507,12 @@ private class FrontContainerView: UIView {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let colors: CFArray = [
             UIColor(white: 0.0, alpha: 0.0).CGColor,
-            UIColor(white: 0.0, alpha: 0.25).CGColor,
-            UIColor(white: 0.0, alpha: 0.5).CGColor,
+            UIColor(white: 0.0, alpha: 0.1).CGColor,
+            UIColor(white: 0.0, alpha: 0.2).CGColor,
+            UIColor(white: 0.0, alpha: 0.3).CGColor,
+            UIColor(white: 0.0, alpha: 0.4).CGColor,
         ]
-        let locations: [CGFloat] = [0, 0.66, 1.0]
+        let locations: [CGFloat] = [0.36, 0.64, 0.84, 0.96, 1.0]
         let options = CGGradientDrawingOptions()
         if let gradient = CGGradientCreateWithColors(colorSpace, colors, locations) {
             CGContextDrawLinearGradient(context, gradient, CGPointMake(0, 0), CGPointMake(w, 0), options)
