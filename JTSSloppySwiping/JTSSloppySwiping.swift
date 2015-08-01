@@ -85,19 +85,23 @@ class JTSSloppySwiping: NSObject {
             
         case .Began:
             if (!self.isAnimatingANonInteractiveTransition) {
-                self.isInteractivelyPopping = true
-                self.navigationController?.popViewControllerAnimated(true)
+                if (navigationController.viewControllers.count > 1) {
+                    self.isInteractivelyPopping = true
+                    self.navigationController?.popViewControllerAnimated(true)
+                }
             }
             
         case .Changed:
-            if (!self.isAnimatingANonInteractiveTransition) {
+            if (!self.isAnimatingANonInteractiveTransition
+                && self.isInteractivelyPopping) {
                 let view = navigationController.view
                 let t = recognizer.translationInView(view)
                 self.interactivePopAnimator.translation = t
             }
             
         case .Ended, .Cancelled:
-            if (!self.isAnimatingANonInteractiveTransition) {
+            if (!self.isAnimatingANonInteractiveTransition
+                && self.isInteractivelyPopping) {
                 self.isAnimatingANonInteractiveTransition = true
                 let animator = self.interactivePopAnimator
                 let view = navigationController.view
