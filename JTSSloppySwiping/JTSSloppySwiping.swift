@@ -16,56 +16,62 @@ initializing JTSSloppySwiping and keeping a reference to it.
 */
 class JTSSloppyNavigationController: UINavigationController {
     
-    private var sloppySwiping: JTSSloppySwiping? = nil
-    
-    override init(navigationBarClass: AnyClass?, toolbarClass: AnyClass?) {
-        super.init(navigationBarClass: navigationBarClass, toolbarClass: toolbarClass)
-    }
-    
-    override init(rootViewController: UIViewController) {
-        super.init(rootViewController: rootViewController)
-    }
+    private lazy var sloppySwiping: JTSSloppySwiping = {
+        return JTSSloppySwiping(navigationController: self)
+    }()
     
     override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: NSBundle?) {
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
-        self.sloppySwiping = JTSSloppySwiping(navigationController: self)
+        self.delegate = self.sloppySwiping
     }
 
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
-        self.sloppySwiping = JTSSloppySwiping(navigationController: self)
+        self.delegate = self.sloppySwiping
+    }
+    
+    override init(navigationBarClass: AnyClass?, toolbarClass: AnyClass?) {
+        super.init(navigationBarClass: navigationBarClass, toolbarClass: toolbarClass)
+        self.delegate = self.sloppySwiping
+    }
+    
+    override init(rootViewController: UIViewController) {
+        super.init(rootViewController: rootViewController)
+        self.delegate = self.sloppySwiping
     }
 }
 
 /**
-To use this, just initialize it with a navigation controller and keep a strong
-reference to the JTSSloppySwiping instance
+To use this, just initialize it and keep a strong reference to it. You don't 
+actually have to make it your navigation controller's delegate if you need to
+use a different class for that purpose. Just forward the relevant delegate
+methods to your sloppy swiping instance.
 */
 class JTSSloppySwiping: NSObject {
     
-    weak private var navigationController: UINavigationController?
-    
     init(navigationController: UINavigationController) {
+        self.interactivePopAnimator = InteractivePopAnimator()
+        self.popRecognizer = UIPanGestureRecognizer()
         self.navigationController = navigationController
         super.init()
-        navigationController.delegate = self
         self.popRecognizer.addTarget(self, action: "popRecognizerPanned:")
         navigationController.view.addGestureRecognizer(self.popRecognizer)
     }
     
     // MARK: Private
     
+    private weak var navigationController: UINavigationController?
     private var isInteractivelyPopping: Bool = false
-    private var interactivePopAnimator = InteractivePopAnimator()
-    private let popRecognizer = UIPanGestureRecognizer()
-    
+    private var interactivePopAnimator: InteractivePopAnimator
+    private let popRecognizer: UIPanGestureRecognizer
+
     private var isAnimatingANonInteractiveTransition: Bool = false {
         didSet {
             self.popRecognizer.enabled = !self.isAnimatingANonInteractiveTransition
         }
     }
     
-    /*private, basically*/ func popRecognizerPanned(recognizer: UIPanGestureRecognizer) {
+    @objc private func popRecognizerPanned(recognizer: UIPanGestureRecognizer) {
         
         guard let navigationController = self.navigationController else {
             return
@@ -134,9 +140,12 @@ extension JTSSloppySwiping: UINavigationControllerDelegate {
     
 }
 
-class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransitioning {
+private let defaultDuration: NSTimeInterval = 0.33
+private let maxBackViewTranslationPercentage: CGFloat = 0.25
+
+private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransitioning {
     
-    private let operation: UINavigationControllerOperation
+    let operation: UINavigationControllerOperation
     
     init(operation: UINavigationControllerOperation) {
         self.operation = operation
@@ -144,11 +153,11 @@ class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransitioning {
 
     // MARK: UIViewControllerAnimatedTransitioning
     
-    func transitionDuration(transitionContext: UIViewControllerContextTransitioning?) -> NSTimeInterval {
-        return self.defaultDuration
+    @objc func transitionDuration(transitionContext: UIViewControllerContextTransitioning?) -> NSTimeInterval {
+        return defaultDuration
     }
 
-    func animateTransition(transitionContext: UIViewControllerContextTransitioning) {
+    @objc func animateTransition(transitionContext: UIViewControllerContextTransitioning) {
         if (self.operation == .Push) {
             self.push(transitionContext)
         }
@@ -157,11 +166,9 @@ class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransitioning {
         }
     }
     
-    // MARK: Private
+    // MARK: Convenience
     
-    private let defaultDuration: NSTimeInterval = 0.33
-    
-    private func push(transitionContext: UIViewControllerContextTransitioning) {
+    func push(transitionContext: UIViewControllerContextTransitioning) {
         guard let container = transitionContext.containerView(),
             fromView = transitionContext.viewForKey(UITransitionContextFromViewKey),
             toView = transitionContext.viewForKey(UITransitionContextToViewKey) else {
@@ -182,10 +189,10 @@ class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransitioning {
         container.addSubview(shadowView)
         container.addSubview(toView)
         
-        UIView.animateWithDuration(self.defaultDuration,
+        UIView.animateWithDuration(defaultDuration,
             animations: { () -> Void in
                 shadowView.alpha = 0.5
-                let maxOffset = container.width / 3.0
+                let maxOffset = container.width * maxBackViewTranslationPercentage
                 fromView.transform = CGAffineTransformMakeTranslation(-maxOffset, 0)
                 toView.transform = CGAffineTransformIdentity
             }) { (completed) -> Void in
@@ -195,14 +202,14 @@ class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransitioning {
         }
     }
     
-    private func pop(transitionContext: UIViewControllerContextTransitioning) {
+    func pop(transitionContext: UIViewControllerContextTransitioning) {
         guard let container = transitionContext.containerView(),
             fromView = transitionContext.viewForKey(UITransitionContextFromViewKey),
             toView = transitionContext.viewForKey(UITransitionContextToViewKey) else {
                 return
         }
         
-        let maxOffset = container.width / 3.0
+        let maxOffset = container.width * maxBackViewTranslationPercentage
         toView.frame = container.bounds
         toView.transform = CGAffineTransformMakeTranslation(-maxOffset, 0)
         
@@ -217,7 +224,7 @@ class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransitioning {
         container.addSubview(shadowView)
         container.addSubview(fromView)
         
-        UIView.animateWithDuration(self.defaultDuration,
+        UIView.animateWithDuration(defaultDuration,
             animations: { () -> Void in
                 shadowView.alpha = 0
                 fromView.transform = CGAffineTransformMakeTranslation(fromView.width, 0)
@@ -231,7 +238,7 @@ class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransitioning {
     
 }
 
-class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransitioning, UIViewControllerInteractiveTransitioning {
+private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransitioning, UIViewControllerInteractiveTransitioning {
     
     var translation: CGPoint = CGPointZero {
         didSet {
@@ -241,7 +248,6 @@ class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransitioning, U
     
     private var activeContext: UIViewControllerContextTransitioning? = nil
     private var activeDuration: NSTimeInterval? = nil
-    private let defaultDuration: NSTimeInterval = 0.33
     private let shadowView: UIView = {
         let shadowView = UIView(frame: CGRectZero)
         shadowView.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
@@ -251,26 +257,25 @@ class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransitioning, U
     
     // MARK: UIViewControllerAnimatedTransitioning
     
-    func transitionDuration(transitionContext: UIViewControllerContextTransitioning?) -> NSTimeInterval {
+    @objc func transitionDuration(transitionContext: UIViewControllerContextTransitioning?) -> NSTimeInterval {
         if let duration = self.activeDuration {
             return duration
         }
-        return self.defaultDuration
+        return defaultDuration
     }
     
-    func animateTransition(transitionContext: UIViewControllerContextTransitioning) {
+    @objc func animateTransition(transitionContext: UIViewControllerContextTransitioning) {
         fatalError("this class should not be used for non-interactive transitions")
     }
     
     // MARK: UIViewControllerInteractiveTransitioning
     
-    func startInteractiveTransition(transitionContext: UIViewControllerContextTransitioning) {
+    @objc func startInteractiveTransition(transitionContext: UIViewControllerContextTransitioning) {
         self.activeContext = transitionContext
         self.prepForPop()
     }
-}
 
-private extension InteractivePopAnimator {
+    // MARK: Private / Convenience
     
     func prepForPop() {
         
@@ -281,7 +286,7 @@ private extension InteractivePopAnimator {
                 return
         }
         
-        let maxOffset = container.width / 3.0
+        let maxOffset = container.width * maxBackViewTranslationPercentage
         toView.frame = container.bounds
         toView.transform = CGAffineTransformMakeTranslation(-maxOffset, 0)
         
@@ -309,7 +314,7 @@ private extension InteractivePopAnimator {
 
         let maxFromViewOffset = maxDistance
 
-        let maxToViewOffset = maxDistance/3.0
+        let maxToViewOffset = maxDistance * maxBackViewTranslationPercentage
         let resolvedToViewOffset = -maxToViewOffset + (maxToViewOffset * percent)
         
         fromView.transform = CGAffineTransformMakeTranslation(maxFromViewOffset * percent, 0)
@@ -328,7 +333,7 @@ private extension InteractivePopAnimator {
         
         let percent = self.percentDismissedForTranslation(translation, container: container)
         
-        return ((percent < 0.33 && velocity.x < 100.0) || velocity.x < 0)
+        return ((percent < 0.25 && velocity.x < 100.0) || velocity.x < 0)
     }
     
     func cancelWithTranslation(translation: CGPoint, velocity: CGPoint, completion: () -> Void) {
@@ -341,7 +346,7 @@ private extension InteractivePopAnimator {
         }
         
         let maxDistance = container.width
-        let maxToViewOffset = maxDistance/3.0
+        let maxToViewOffset = maxDistance * maxBackViewTranslationPercentage
         let resolvedToViewOffset = -maxToViewOffset
         let duration = self.durationForDistance(distance: maxDistance, velocity: abs(velocity.x))
         self.activeDuration = duration
@@ -422,4 +427,5 @@ private extension InteractivePopAnimator {
         let maxDuration: CGFloat = 0.5
         return (NSTimeInterval)(max(min(maxDuration, d / v), minDuration))
     }
+    
 }
