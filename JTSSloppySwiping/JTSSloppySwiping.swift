@@ -180,6 +180,7 @@ private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransiti
     // MARK: Convenience
     
     func push(transitionContext: UIViewControllerContextTransitioning) {
+        
         guard let container = transitionContext.containerView(),
             fromView = transitionContext.viewForKey(UITransitionContextFromViewKey),
             toView = transitionContext.viewForKey(UITransitionContextToViewKey) else {
@@ -201,7 +202,6 @@ private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransiti
         fromView.transform = CGAffineTransformIdentity
         
         let backOverlayView = UIView(frame: containerBounds)
-        backOverlayView.backgroundColor = UIColor.blackColor()
         backOverlayView.alpha = 0
         
         container.addSubview(fromView)
@@ -210,7 +210,7 @@ private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransiti
         
         UIView.animateWithDuration(defaultPushPopDuration,
             animations: { () -> Void in
-                backOverlayView.alpha = 0.5
+                backOverlayView.alpha = 1.0
                 fromView.transform = CGAffineTransformMakeTranslation(-maxOffset, 0)
                 self.frontContainerView.transform = CGAffineTransformIdentity
                 self.frontContainerView.dropShadowView.alpha = 1.0
@@ -242,8 +242,7 @@ private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransiti
         toView.transform = CGAffineTransformMakeTranslation(-maxOffset, 0)
         
         let backOverlayView = UIView(frame: containerBounds)
-        backOverlayView.backgroundColor = UIColor.blackColor()
-        backOverlayView.alpha = 0.5
+        backOverlayView.alpha = 1.0
         
         container.addSubview(toView)
         container.addSubview(backOverlayView)
@@ -279,7 +278,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
     
     private let backOverlayView: UIView = {
         let backOverlayView = UIView(frame: CGRectZero)
-        backOverlayView.backgroundColor = UIColor(white: 0.0, alpha: 0.16)
+        backOverlayView.backgroundColor = UIColor(white: 0.0, alpha: 0.1)
         backOverlayView.alpha = 1.0
         return backOverlayView
         }()
@@ -493,7 +492,7 @@ private class FrontContainerView: UIView {
     
     private let dropShadowView: UIView = {
         
-        let w: CGFloat = 16.0
+        let w: CGFloat = 10.0
         
         let stretchableShadow = UIImageView(frame: CGRectMake(0, 0, w, 1))
         stretchableShadow.backgroundColor = UIColor.clearColor()
@@ -506,13 +505,13 @@ private class FrontContainerView: UIView {
         let context = UIGraphicsGetCurrentContext()
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let colors: CFArray = [
-            UIColor(white: 0.0, alpha: 0.0).CGColor,
-            UIColor(white: 0.0, alpha: 0.1).CGColor,
-            UIColor(white: 0.0, alpha: 0.2).CGColor,
-            UIColor(white: 0.0, alpha: 0.3).CGColor,
-            UIColor(white: 0.0, alpha: 0.4).CGColor,
+            UIColor(white: 0.0, alpha: 0.000).CGColor,
+            UIColor(white: 0.0, alpha: 0.045).CGColor,
+            UIColor(white: 0.0, alpha: 0.009).CGColor,
+            UIColor(white: 0.0, alpha: 0.135).CGColor,
+            UIColor(white: 0.0, alpha: 0.180).CGColor,
         ]
-        let locations: [CGFloat] = [0.36, 0.64, 0.84, 0.96, 1.0]
+        let locations: [CGFloat] = [0.0, 0.34, 0.60, 0.80, 1.0]
         let options = CGGradientDrawingOptions()
         if let gradient = CGGradientCreateWithColors(colorSpace, colors, locations) {
             CGContextDrawLinearGradient(context, gradient, CGPointMake(0, 0), CGPointMake(w, 0), options)
@@ -526,19 +525,22 @@ private class FrontContainerView: UIView {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        
+        self.commonInit()
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        self.commonInit()
+    }
+    
+    func commonInit() {
         var dropShadowFrame = self.dropShadowView.frame
         dropShadowFrame.origin.x = 0 - dropShadowFrame.size.width
         dropShadowFrame.origin.y = 0
         dropShadowFrame.size.height = self.bounds.size.height
         self.dropShadowView.frame = dropShadowFrame
         self.addSubview(self.dropShadowView)
-        
         self.clipsToBounds = false
         self.backgroundColor = UIColor.clearColor()
-    }
-
-    required init?(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
     }
 }
