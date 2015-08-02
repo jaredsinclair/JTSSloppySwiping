@@ -507,7 +507,7 @@ private class FrontContainerView: UIView {
         let colors: CFArray = [
             UIColor(white: 0.0, alpha: 0.000).CGColor,
             UIColor(white: 0.0, alpha: 0.045).CGColor,
-            UIColor(white: 0.0, alpha: 0.009).CGColor,
+            UIColor(white: 0.0, alpha: 0.090).CGColor,
             UIColor(white: 0.0, alpha: 0.135).CGColor,
             UIColor(white: 0.0, alpha: 0.180).CGColor,
         ]
