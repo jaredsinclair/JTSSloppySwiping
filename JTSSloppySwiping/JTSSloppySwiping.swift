@@ -291,6 +291,8 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         
         self.activeDuration = duration
         
+        self.activeContext?.cancelInteractiveTransition()
+        
         UIView.animateWithDuration(duration,
             delay: 0,
             options: options,
@@ -305,8 +307,6 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
                 container.addSubview(fromView)
                 self.backOverlayView.removeFromSuperview()
                 self.frontContainerView.removeFromSuperview()
-                self.activeContext?.cancelInteractiveTransition()
-                self.activeContext?.transitionWasCancelled()
                 self.activeContext?.completeTransition(false)
                 completion()
             }
@@ -338,6 +338,8 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         
         self.activeDuration = duration
         
+        self.activeContext?.finishInteractiveTransition()
+        
         UIView.animateWithDuration(duration,
             delay: 0,
             options: options,
@@ -352,7 +354,6 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
                 self.frontContainerView.transform = CGAffineTransformIdentity
                 self.frontContainerView.removeFromSuperview()
                 self.backOverlayView.removeFromSuperview()
-                self.activeContext?.finishInteractiveTransition()
                 self.activeContext?.completeTransition(true)
                 completion()
             }
