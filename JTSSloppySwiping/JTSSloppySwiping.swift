@@ -368,7 +368,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
     
     func durationForDistance(distance d: CGFloat, velocity v: CGFloat) -> NSTimeInterval {
         let minDuration: CGFloat = 0.08
-        let maxDuration: CGFloat = 0.5
+        let maxDuration: CGFloat = 0.4
         return (NSTimeInterval)(max(min(maxDuration, d / v), minDuration))
     }
     
