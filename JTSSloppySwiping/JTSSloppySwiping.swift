@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import Darwin
 
 /**
 This is a convenience subclass, which relieves you of the burden of keeping a 
@@ -132,7 +133,7 @@ extension JTSSloppySwiping: UINavigationControllerDelegate {
         if (self.isInteractivelyPopping && operation == .Pop) {
             return self.interactivePopAnimator
         }
-        return NonInteractiveAnimator(operation: operation)
+        return nil
     }
     
     func navigationController(navigationController: UINavigationController, interactionControllerForAnimationController animationController: UIViewControllerAnimatedTransitioning) -> UIViewControllerInteractiveTransitioning? {
@@ -144,126 +145,10 @@ extension JTSSloppySwiping: UINavigationControllerDelegate {
     
 }
 
-private let defaultPushPopDuration: NSTimeInterval = 0.33
-private let defaultCancelPopDuration = defaultPushPopDuration / 2.0
-private let maxBackViewTranslationPercentage: CGFloat = 0.25
+private let defaultCancelPopDuration: NSTimeInterval = 0.16
+private let maxBackViewTranslationPercentage: CGFloat = 0.30
 private let minimumDismissalPercentage: CGFloat = 0.5
 private let minimumThresholdVelocity: CGFloat = 100.0
-
-private class NonInteractiveAnimator: NSObject, UIViewControllerAnimatedTransitioning {
-    
-    let operation: UINavigationControllerOperation
-    
-    private let frontContainerView: FrontContainerView = {
-        return FrontContainerView(frame: CGRectZero)
-        }()
-    
-    init(operation: UINavigationControllerOperation) {
-        self.operation = operation
-    }
-
-    // MARK: UIViewControllerAnimatedTransitioning
-    
-    @objc func transitionDuration(transitionContext: UIViewControllerContextTransitioning?) -> NSTimeInterval {
-        return defaultPushPopDuration
-    }
-
-    @objc func animateTransition(transitionContext: UIViewControllerContextTransitioning) {
-        if (self.operation == .Push) {
-            self.push(transitionContext)
-        }
-        else if (self.operation == .Pop) {
-            self.pop(transitionContext)
-        }
-    }
-    
-    // MARK: Convenience
-    
-    func push(transitionContext: UIViewControllerContextTransitioning) {
-        
-        guard let container = transitionContext.containerView(),
-            fromView = transitionContext.viewForKey(UITransitionContextFromViewKey),
-            toView = transitionContext.viewForKey(UITransitionContextToViewKey) else {
-                return
-        }
-        
-        let containerBounds = container.bounds
-        
-        self.frontContainerView.frame = containerBounds
-        
-        let maxOffset = containerBounds.size.width * maxBackViewTranslationPercentage
-        
-        toView.frame = self.frontContainerView.bounds
-        self.frontContainerView.addSubview(toView)
-        self.frontContainerView.transform = CGAffineTransformMakeTranslation(containerBounds.size.width, 0)
-        self.frontContainerView.dropShadowView.alpha = 0.0
-        
-        fromView.frame = containerBounds
-        fromView.transform = CGAffineTransformIdentity
-        
-        let backOverlayView = UIView(frame: containerBounds)
-        backOverlayView.alpha = 0
-        
-        container.addSubview(fromView)
-        container.addSubview(backOverlayView)
-        container.addSubview(self.frontContainerView)
-        
-        UIView.animateWithDuration(defaultPushPopDuration,
-            animations: { () -> Void in
-                backOverlayView.alpha = 1.0
-                fromView.transform = CGAffineTransformMakeTranslation(-maxOffset, 0)
-                self.frontContainerView.transform = CGAffineTransformIdentity
-                self.frontContainerView.dropShadowView.alpha = 1.0
-            }) { (completed) -> Void in
-                fromView.transform = CGAffineTransformIdentity
-                backOverlayView.removeFromSuperview()
-                transitionContext.completeTransition(true)
-        }
-    }
-    
-    func pop(transitionContext: UIViewControllerContextTransitioning) {
-        guard let container = transitionContext.containerView(),
-            fromView = transitionContext.viewForKey(UITransitionContextFromViewKey),
-            toView = transitionContext.viewForKey(UITransitionContextToViewKey) else {
-                return
-        }
-        
-        let containerBounds = container.bounds
-        
-        self.frontContainerView.frame = containerBounds
-        
-        let maxOffset = containerBounds.size.width * maxBackViewTranslationPercentage
-        
-        fromView.frame = self.frontContainerView.bounds
-        self.frontContainerView.addSubview(fromView)
-        self.frontContainerView.transform = CGAffineTransformIdentity
-        
-        toView.frame = containerBounds
-        toView.transform = CGAffineTransformMakeTranslation(-maxOffset, 0)
-        
-        let backOverlayView = UIView(frame: containerBounds)
-        backOverlayView.alpha = 1.0
-        
-        container.addSubview(toView)
-        container.addSubview(backOverlayView)
-        container.addSubview(self.frontContainerView)
-        
-        UIView.animateWithDuration(defaultPushPopDuration,
-            animations: { () -> Void in
-                backOverlayView.alpha = 0
-                self.frontContainerView.transform = CGAffineTransformMakeTranslation(fromView.width, 0)
-                toView.transform = CGAffineTransformIdentity
-                self.frontContainerView.dropShadowView.alpha = 0.0
-            }) { (completed) -> Void in
-                self.frontContainerView.transform = CGAffineTransformIdentity
-                self.frontContainerView.removeFromSuperview()
-                fromView.removeFromSuperview()
-                backOverlayView.removeFromSuperview()
-                transitionContext.completeTransition(true)
-        }
-    }
-    
-}
 
 private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransitioning, UIViewControllerInteractiveTransitioning {
     
@@ -293,7 +178,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         if let duration = self.activeDuration {
             return duration
         }
-        return defaultPushPopDuration
+        return 0
     }
     
     @objc func animateTransition(transitionContext: UIViewControllerContextTransitioning) {
@@ -406,6 +291,8 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         
         self.activeDuration = duration
         
+        self.activeContext?.cancelInteractiveTransition()
+        
         UIView.animateWithDuration(duration,
             delay: 0,
             options: options,
@@ -420,8 +307,6 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
                 container.addSubview(fromView)
                 self.backOverlayView.removeFromSuperview()
                 self.frontContainerView.removeFromSuperview()
-                self.activeContext?.cancelInteractiveTransition()
-                self.activeContext?.transitionWasCancelled()
                 self.activeContext?.completeTransition(false)
                 completion()
             }
@@ -448,10 +333,12 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         }
         else {
             options = .CurveEaseInOut
-            duration = defaultPushPopDuration
+            duration = defaultCancelPopDuration
         }
         
         self.activeDuration = duration
+        
+        self.activeContext?.finishInteractiveTransition()
         
         UIView.animateWithDuration(duration,
             delay: 0,
@@ -467,7 +354,6 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
                 self.frontContainerView.transform = CGAffineTransformIdentity
                 self.frontContainerView.removeFromSuperview()
                 self.backOverlayView.removeFromSuperview()
-                self.activeContext?.finishInteractiveTransition()
                 self.activeContext?.completeTransition(true)
                 completion()
             }
@@ -482,7 +368,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
     
     func durationForDistance(distance d: CGFloat, velocity v: CGFloat) -> NSTimeInterval {
         let minDuration: CGFloat = 0.08
-        let maxDuration: CGFloat = 0.5
+        let maxDuration: CGFloat = 0.4
         return (NSTimeInterval)(max(min(maxDuration, d / v), minDuration))
     }
     
