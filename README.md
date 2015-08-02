@@ -1,6 +1,10 @@
 # JTSSloppySwiping
 Drop-in UINavigationControllerDelegate that enables sloppy swiping.
 
+## Requirements
+
+Requires Swift 2.0.
+
 ## Usage
 
 If you want to use the convenience navigation controller subclass:
