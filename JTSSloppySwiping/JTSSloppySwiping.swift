@@ -346,7 +346,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
                 return
         }
         
-        let maxDistance = container.width
+        let maxDistance = container.bounds.size.width
         let percent = self.percentDismissedForTranslation(translation, container: container)
 
         let maxFromViewOffset = maxDistance
@@ -383,7 +383,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
                 return
         }
         
-        let maxDistance = container.width
+        let maxDistance = container.bounds.size.width
         let maxToViewOffset = maxDistance * maxBackViewTranslationPercentage
         let resolvedToViewOffset = -maxToViewOffset
         let duration: NSTimeInterval
@@ -438,7 +438,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
                 return
         }
         
-        let maxDistance = container.width
+        let maxDistance = container.bounds.size.width
         let duration: NSTimeInterval
         
         let options: UIViewAnimationOptions
@@ -476,7 +476,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
     }
     
     func percentDismissedForTranslation(translation: CGPoint, container: UIView) -> CGFloat {
-        let maxDistance = container.width
+        let maxDistance = container.bounds.size.width
         return (min(maxDistance, max(0, translation.x))) / maxDistance
     }
     
