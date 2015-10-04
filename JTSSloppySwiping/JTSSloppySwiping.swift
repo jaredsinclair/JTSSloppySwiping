@@ -325,11 +325,16 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         
         let maxDistance = container.bounds.size.width
         let duration: NSTimeInterval
+
+        // Like a push mower, this gesture completion feels more
+        // comfortable with a little added velocity.
+        var comfortVelocity = velocity
+        comfortVelocity.x *= 1.5
         
         let options: UIViewAnimationOptions
-        if abs(velocity.x) > 0 {
+        if abs(comfortVelocity.x) > 0 {
             options = .CurveEaseOut
-            duration = self.durationForDistance(distance: maxDistance, velocity: abs(velocity.x))
+            duration = self.durationForDistance(distance: maxDistance, velocity: abs(comfortVelocity.x))
         }
         else {
             options = .CurveEaseInOut
