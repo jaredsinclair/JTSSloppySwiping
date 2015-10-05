@@ -40,6 +40,7 @@ class JTSSloppyNavigationController: UINavigationController {
         super.init(rootViewController: rootViewController)
         self.delegate = self.sloppySwiping
     }
+    
 }
 
 /**
@@ -125,6 +126,7 @@ class JTSSloppySwiping: NSObject {
             
         }
     }
+    
 }
 
 extension JTSSloppySwiping: UINavigationControllerDelegate {
@@ -381,8 +383,32 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
 
 private class FrontContainerView: UIView {
     
-    private let dropShadowView: UIView = {
-        
+    private let dropShadowView: UIView
+    
+    override init(frame: CGRect) {
+        self.dropShadowView = FrontContainerView.newDropShadowView()
+        super.init(frame: frame)
+        self.commonInit()
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        self.dropShadowView = FrontContainerView.newDropShadowView()
+        super.init(coder: aDecoder)
+        self.commonInit()
+    }
+    
+    func commonInit() {
+        var dropShadowFrame = self.dropShadowView.frame
+        dropShadowFrame.origin.x = 0 - dropShadowFrame.size.width
+        dropShadowFrame.origin.y = 0
+        dropShadowFrame.size.height = self.bounds.size.height
+        self.dropShadowView.frame = dropShadowFrame
+        self.addSubview(self.dropShadowView)
+        self.clipsToBounds = false
+        self.backgroundColor = UIColor.clearColor()
+    }
+    
+    static func newDropShadowView() -> UIView {
         let w: CGFloat = 10.0
         
         let stretchableShadow = UIImageView(frame: CGRectMake(0, 0, w, 1))
@@ -411,27 +437,6 @@ private class FrontContainerView: UIView {
         UIGraphicsEndImageContext()
         
         return stretchableShadow
-        
-        }()
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        self.commonInit()
-    }
-
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder)
-        self.commonInit()
     }
     
-    func commonInit() {
-        var dropShadowFrame = self.dropShadowView.frame
-        dropShadowFrame.origin.x = 0 - dropShadowFrame.size.width
-        dropShadowFrame.origin.y = 0
-        dropShadowFrame.size.height = self.bounds.size.height
-        self.dropShadowView.frame = dropShadowFrame
-        self.addSubview(self.dropShadowView)
-        self.clipsToBounds = false
-        self.backgroundColor = UIColor.clearColor()
-    }
 }
