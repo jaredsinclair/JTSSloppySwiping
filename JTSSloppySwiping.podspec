@@ -1,7 +1,7 @@
 
 Pod::Spec.new do |s|
   s.name             = "JTSSloppySwiping"
-  s.version          = "1.2.0"
+  s.version          = "1.2.1"
   s.summary          = "A drop-in UINavigationControllerDelegate that enables sloppy swiping."
   s.description      = "A drop-in UINavigationControllerDelegate that enables sloppy swiping. I'm adding additional words here to satisy CocoaPods' pedantry."
   s.homepage         = "https://github.com/jaredsinclair/JTSSloppySwiping"
