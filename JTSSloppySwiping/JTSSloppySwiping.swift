@@ -23,22 +23,22 @@ class SloppyNavigationController: UINavigationController {
     
     override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
-        self.delegate = self.sloppySwiping
+        delegate = sloppySwiping
     }
 
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
-        self.delegate = self.sloppySwiping
+        delegate = sloppySwiping
     }
     
     override init(navigationBarClass: AnyClass?, toolbarClass: AnyClass?) {
         super.init(navigationBarClass: navigationBarClass, toolbarClass: toolbarClass)
-        self.delegate = self.sloppySwiping
+        delegate = sloppySwiping
     }
     
     override init(rootViewController: UIViewController) {
         super.init(rootViewController: rootViewController)
-        self.delegate = self.sloppySwiping
+        delegate = sloppySwiping
     }
     
 }
@@ -57,8 +57,8 @@ class SloppySwiping: NSObject {
         self.popRecognizer = UIPanGestureRecognizer()
         self.navigationController = navigationController
         super.init()
-        self.popRecognizer.addTarget(self, action: #selector(SloppySwiping.popRecognizerPanned(_:)))
-        navigationController.view.addGestureRecognizer(self.popRecognizer)
+        popRecognizer.addTarget(self, action: #selector(SloppySwiping.popRecognizerPanned(_:)))
+        navigationController.view.addGestureRecognizer(popRecognizer)
     }
     
     // MARK: Private
@@ -70,56 +70,51 @@ class SloppySwiping: NSObject {
 
     fileprivate var isAnimatingANonInteractiveTransition: Bool = false {
         didSet {
-            self.popRecognizer.isEnabled = !self.isAnimatingANonInteractiveTransition
+            popRecognizer.isEnabled = !isAnimatingANonInteractiveTransition
         }
     }
     
     @objc fileprivate func popRecognizerPanned(_ recognizer: UIPanGestureRecognizer) {
         
-        guard let navigationController = self.navigationController else {
-            return
-        }
-        
-        if (recognizer != self.popRecognizer) {
-            return
-        }
+        guard let navigationController = navigationController else {return}
+        guard recognizer == popRecognizer else {return}
         
         switch (recognizer.state) {
             
         case .began:
-            if (!self.isAnimatingANonInteractiveTransition) {
+            if (!isAnimatingANonInteractiveTransition) {
                 if (navigationController.viewControllers.count > 1) {
-                    self.isInteractivelyPopping = true
+                    isInteractivelyPopping = true
                     _ = self.navigationController?.popViewController(animated: true)
                 }
             }
             
         case .changed:
-            if (!self.isAnimatingANonInteractiveTransition
-                && self.isInteractivelyPopping) {
+            if (!isAnimatingANonInteractiveTransition
+                && isInteractivelyPopping) {
                 let view = navigationController.view
                 let t = recognizer.translation(in: view)
-                self.interactivePopAnimator.translation = t
+                interactivePopAnimator.translation = t
             }
             
         case .ended, .cancelled:
-            if (!self.isAnimatingANonInteractiveTransition
-                && self.isInteractivelyPopping) {
-                self.isAnimatingANonInteractiveTransition = true
-                let animator = self.interactivePopAnimator
+            if (!isAnimatingANonInteractiveTransition
+                && isInteractivelyPopping) {
+                isAnimatingANonInteractiveTransition = true
+                let animator = interactivePopAnimator
                 let view = navigationController.view
                 let t = recognizer.translation(in: view)
                 let v = recognizer.velocity(in: view)
                 if animator.shouldCancelForGestureEndingWithTranslation(t, velocity: v) {
-                    animator.cancelWithTranslation(t, velocity: v, completion: { () -> Void in
+                    animator.cancelWithTranslation(t, velocity: v) {
                         self.isInteractivelyPopping = false
                         self.isAnimatingANonInteractiveTransition = false
-                    })
+                    }
                 } else {
-                    animator.finishWithTranslation(t, velocity: v, completion: { () -> Void in
+                    animator.finishWithTranslation(t, velocity: v) {
                         self.isInteractivelyPopping = false
                         self.isAnimatingANonInteractiveTransition = false
-                    })
+                    }
                 }
             }
             
@@ -133,15 +128,15 @@ class SloppySwiping: NSObject {
 extension SloppySwiping: UINavigationControllerDelegate {
     
     func navigationController(_ navigationController: UINavigationController, animationControllerFor operation: UINavigationControllerOperation, from fromVC: UIViewController, to toVC: UIViewController) -> UIViewControllerAnimatedTransitioning? {
-        if (self.isInteractivelyPopping && operation == .pop) {
-            return self.interactivePopAnimator
+        if (isInteractivelyPopping && operation == .pop) {
+            return interactivePopAnimator
         }
         return nil
     }
     
     func navigationController(_ navigationController: UINavigationController, interactionControllerFor animationController: UIViewControllerAnimatedTransitioning) -> UIViewControllerInteractiveTransitioning? {
-        if (self.isInteractivelyPopping) {
-            return self.interactivePopAnimator
+        if (isInteractivelyPopping) {
+            return interactivePopAnimator
         }
         return nil
     }
@@ -157,7 +152,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
     
     var translation: CGPoint = CGPoint.zero {
         didSet {
-            self.updateViewsWithTranslation(translation)
+            updateViewsWithTranslation(translation)
         }
     }
     
@@ -178,7 +173,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
     // MARK: UIViewControllerAnimatedTransitioning
     
     @objc func transitionDuration(using transitionContext: UIViewControllerContextTransitioning?) -> TimeInterval {
-        if let duration = self.activeDuration {
+        if let duration = activeDuration {
             return duration
         }
         return 0
@@ -191,15 +186,15 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
     // MARK: UIViewControllerInteractiveTransitioning
     
     @objc func startInteractiveTransition(_ transitionContext: UIViewControllerContextTransitioning) {
-        self.activeContext = transitionContext
-        self.prepForPop()
+        activeContext = transitionContext
+        prepForPop()
     }
 
     // MARK: Private / Convenience
     
     func prepForPop() {
         
-        guard let transitionContext = self.activeContext,
+        guard let transitionContext = activeContext,
             let fromView = transitionContext.view(forKey: UITransitionContextViewKey.from),
             let toView = transitionContext.view(forKey: UITransitionContextViewKey.to) else {
                 return
@@ -208,64 +203,64 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         let container = transitionContext.containerView
         let containerBounds = container.bounds
         
-        self.frontContainerView.frame = containerBounds
+        frontContainerView.frame = containerBounds
         
         let maxOffset = containerBounds.size.width * maxBackViewTranslationPercentage
 
-        fromView.frame = self.frontContainerView.bounds
-        self.frontContainerView.addSubview(fromView)
-        self.frontContainerView.transform = CGAffineTransform.identity
+        fromView.frame = frontContainerView.bounds
+        frontContainerView.addSubview(fromView)
+        frontContainerView.transform = CGAffineTransform.identity
         
         toView.frame = containerBounds
         toView.transform = CGAffineTransform(translationX: -maxOffset, y: 0)
         
-        self.backOverlayView.frame = containerBounds
+        backOverlayView.frame = containerBounds
         
         container.addSubview(toView)
-        container.addSubview(self.backOverlayView)
-        container.addSubview(self.frontContainerView)
+        container.addSubview(backOverlayView)
+        container.addSubview(frontContainerView)
     }
     
     func updateViewsWithTranslation(_ translation: CGPoint) {
         
-        guard let transitionContext = self.activeContext,
+        guard let transitionContext = activeContext,
             let toView = transitionContext.view(forKey: UITransitionContextViewKey.to) else {
                 return
         }
         
         let container = transitionContext.containerView
         let maxDistance = container.bounds.size.width
-        let percent = self.percentDismissedForTranslation(translation, container: container)
+        let percent = percentDismissedForTranslation(translation, container: container)
 
         let maxFromViewOffset = maxDistance
 
         let maxToViewOffset = maxDistance * maxBackViewTranslationPercentage
         let resolvedToViewOffset = -maxToViewOffset + (maxToViewOffset * percent)
         
-        self.frontContainerView.transform = CGAffineTransform(translationX: maxFromViewOffset * percent, y: 0)
-        self.frontContainerView.dropShadowView.alpha = (1.0 - percent)
+        frontContainerView.transform = CGAffineTransform(translationX: maxFromViewOffset * percent, y: 0)
+        frontContainerView.dropShadowView.alpha = (1.0 - percent)
         toView.transform = CGAffineTransform(translationX: resolvedToViewOffset, y: 0)
-        self.backOverlayView.alpha = (1.0 - percent)
+        backOverlayView.alpha = (1.0 - percent)
         
-        self.activeContext?.updateInteractiveTransition(percent)
+        activeContext?.updateInteractiveTransition(percent)
     }
     
     func shouldCancelForGestureEndingWithTranslation(_ translation: CGPoint, velocity: CGPoint) -> Bool {
         
-        guard let transitionContext = self.activeContext else {
+        guard let transitionContext = activeContext else {
             return false
         }
         
         let container = transitionContext.containerView
         
-        let percent = self.percentDismissedForTranslation(translation, container: container)
+        let percent = percentDismissedForTranslation(translation, container: container)
         
         return ((percent < minimumDismissalPercentage && velocity.x < 100.0) || velocity.x < 0)
     }
     
     func cancelWithTranslation(_ translation: CGPoint, velocity: CGPoint, completion: @escaping () -> Void) {
         
-        guard let transitionContext = self.activeContext,
+        guard let transitionContext = activeContext,
             let fromView = transitionContext.view(forKey: UITransitionContextViewKey.from),
             let toView = transitionContext.view(forKey: UITransitionContextViewKey.to) else {
                 return
@@ -281,7 +276,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         
         if abs(velocity.x) > minimumThresholdVelocity {
             options = .curveEaseOut
-            let naiveDuration = self.durationForDistance(distance: maxDistance, velocity: abs(velocity.x))
+            let naiveDuration = durationForDistance(distance: maxDistance, velocity: abs(velocity.x))
             let isFlickingShutEarly = translation.x < maxDistance * minimumDismissalPercentage
             if (naiveDuration > defaultCancelPopDuration && isFlickingShutEarly) {
                 duration = defaultCancelPopDuration
@@ -294,21 +289,21 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
             duration = defaultCancelPopDuration
         }
         
-        self.activeDuration = duration
+        activeDuration = duration
         
-        self.activeContext?.cancelInteractiveTransition()
+        activeContext?.cancelInteractiveTransition()
         
         UIView.animate(withDuration: duration,
             delay: 0,
             options: options,
             animations: { () -> Void in
-                self.frontContainerView.transform = CGAffineTransform.identity
+                self.frontContainerView.transform = .identity
                 toView.transform = CGAffineTransform(translationX: resolvedToViewOffset, y: 0)
                 self.backOverlayView.alpha = 1.0
                 self.frontContainerView.dropShadowView.alpha = 1.0
             },
             completion: { (completed) -> Void in
-                toView.transform = CGAffineTransform.identity
+                toView.transform = .identity
                 container.addSubview(fromView)
                 self.backOverlayView.removeFromSuperview()
                 self.frontContainerView.removeFromSuperview()
@@ -321,7 +316,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
     
     func finishWithTranslation(_ translation: CGPoint, velocity: CGPoint, completion: @escaping () -> Void) {
         
-        guard let transitionContext = self.activeContext,
+        guard let transitionContext = activeContext,
             let fromView = transitionContext.view(forKey: UITransitionContextViewKey.from),
             let toView = transitionContext.view(forKey: UITransitionContextViewKey.to) else {
                 return
@@ -340,29 +335,31 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         let options: UIViewAnimationOptions
         if abs(comfortVelocity.x) > 0 {
             options = .curveEaseOut
-            duration = self.durationForDistance(distance: maxDistance, velocity: abs(comfortVelocity.x))
+            duration = durationForDistance(distance: maxDistance, velocity: abs(comfortVelocity.x))
         }
         else {
             options = UIViewAnimationOptions()
             duration = defaultCancelPopDuration
         }
         
-        self.activeDuration = duration
+        activeDuration = duration
         
-        self.activeContext?.finishInteractiveTransition()
+        activeContext?.finishInteractiveTransition()
         
         UIView.animate(withDuration: duration,
             delay: 0,
             options: options,
             animations: { () -> Void in
-                self.frontContainerView.transform = CGAffineTransform(translationX: maxDistance, y: 0)
-                toView.transform = CGAffineTransform.identity
+                self.frontContainerView.transform = CGAffineTransform(
+                    translationX: maxDistance, y: 0
+                )
+                toView.transform = .identity
                 self.backOverlayView.alpha = 0.0
                 self.frontContainerView.dropShadowView.alpha = 0.0
             },
             completion: { (completed) -> Void in
                 fromView.removeFromSuperview()
-                self.frontContainerView.transform = CGAffineTransform.identity
+                self.frontContainerView.transform = .identity
                 self.frontContainerView.removeFromSuperview()
                 self.backOverlayView.removeFromSuperview()
                 self.activeContext?.completeTransition(true)
@@ -390,26 +387,26 @@ private class FrontContainerView: UIView {
     fileprivate let dropShadowView: UIView
     
     override init(frame: CGRect) {
-        self.dropShadowView = FrontContainerView.newDropShadowView()
+        dropShadowView = FrontContainerView.newDropShadowView()
         super.init(frame: frame)
-        self.commonInit()
+        commonInit()
     }
 
     required init?(coder aDecoder: NSCoder) {
-        self.dropShadowView = FrontContainerView.newDropShadowView()
+        dropShadowView = FrontContainerView.newDropShadowView()
         super.init(coder: aDecoder)
-        self.commonInit()
+        commonInit()
     }
     
     func commonInit() {
-        var dropShadowFrame = self.dropShadowView.frame
+        var dropShadowFrame = dropShadowView.frame
         dropShadowFrame.origin.x = 0 - dropShadowFrame.size.width
         dropShadowFrame.origin.y = 0
-        dropShadowFrame.size.height = self.bounds.size.height
-        self.dropShadowView.frame = dropShadowFrame
-        self.addSubview(self.dropShadowView)
-        self.clipsToBounds = false
-        self.backgroundColor = UIColor.clear
+        dropShadowFrame.size.height = bounds.size.height
+        dropShadowView.frame = dropShadowFrame
+        addSubview(dropShadowView)
+        clipsToBounds = false
+        backgroundColor = UIColor.clear
     }
     
     static func newDropShadowView() -> UIView {
