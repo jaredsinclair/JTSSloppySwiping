@@ -335,7 +335,7 @@ private class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransiti
         // Like a push mower, this gesture completion feels more
         // comfortable with a little added velocity.
         var comfortVelocity = velocity
-        comfortVelocity.x *= 1.5
+        comfortVelocity.x *= 2.0
         
         let options: UIViewAnimationOptions
         if abs(comfortVelocity.x) > 0 {
