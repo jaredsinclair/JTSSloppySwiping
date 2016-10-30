@@ -157,6 +157,8 @@ public final class SloppySwiping: NSObject {
 
 extension SloppySwiping: UINavigationControllerDelegate {
     
+    // MARK: UINavigationControllerDelegate
+    
     public func navigationController(_ navigationController: UINavigationController, animationControllerFor operation: UINavigationControllerOperation, from fromVC: UIViewController, to toVC: UIViewController) -> UIViewControllerAnimatedTransitioning? {
         if (isInteractivelyPopping && operation == .pop) {
             return interactivePopAnimator
