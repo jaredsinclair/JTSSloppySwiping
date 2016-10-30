@@ -8,14 +8,14 @@
 
 import UIKit
 
-/**
-This is a convenience subclass, which relieves you of the burden of keeping a 
-strong reference to the required SloppySwiping instance. You can use any 
-other navigation controller if you wish, but you'll be responsible for
-initializing SloppySwiping and keeping a reference to it.
-*/
+/// This is a convenience subclass, which relieves you of the burden of keeping 
+/// a strong reference to the required SloppySwiping instance. You can use any
+/// other navigation controller if you wish, but you'll be responsible for
+/// initializing SloppySwiping instance, setting it as the navigation
+/// controller's delegate (or forwarding the relevant methods from an existing
+/// delegate), and keeping a strong reference to the SloppySwiping instance.
 @objc(JTSSloppyNavigationController)
-class SloppyNavigationController: UINavigationController {
+public class SloppyNavigationController: UINavigationController {
     
     // MARK: Private Properties
     
@@ -25,42 +25,62 @@ class SloppyNavigationController: UINavigationController {
     
     // MARK: UIViewController
     
-    override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
+    public override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
         delegate = sloppySwiping
     }
 
-    required init?(coder aDecoder: NSCoder) {
+    public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         delegate = sloppySwiping
     }
     
     // MARK: UINavigationController
     
-    override init(navigationBarClass: AnyClass?, toolbarClass: AnyClass?) {
+    public override init(navigationBarClass: AnyClass?, toolbarClass: AnyClass?) {
         super.init(navigationBarClass: navigationBarClass, toolbarClass: toolbarClass)
         delegate = sloppySwiping
     }
     
-    override init(rootViewController: UIViewController) {
+    public override init(rootViewController: UIViewController) {
         super.init(rootViewController: rootViewController)
         delegate = sloppySwiping
     }
     
 }
 
-/**
-To use this, just initialize it and keep a strong reference to it. You don't 
-actually have to make it your navigation controller's delegate if you need to
-use a different class for that purpose. Just forward the relevant delegate
-methods to your sloppy swiping instance.
-*/
+/// To use this, just initialize it and keep a strong reference to it. You don't
+/// actually have to make it your navigation controller's delegate if you need 
+/// to use a different class for that purpose. Just forward the relevant 
+/// delegate methods to your sloppy swiping instance.
+/// 
+/// SloppySwiping handles interactive pop animations. Programmatic pop 
+/// animations and push animations are unaffected. An interactive pop can begin
+/// with a horizontal panning gesture from anywhere in the content view 
+/// controller's view, not just the screen edge.
+/// 
+/// SloppySwiping works whether or not the navigation controller's navigation 
+/// bar is hidden (unlike the default screen edge interactive pop animation).
+/// 
+/// - Warning: Right-to-left interface layouts are not currently supported.
 @objc(JTSSloppySwiping)
-class SloppySwiping: NSObject {
+public final class SloppySwiping: NSObject {
     
     // MARK: Init
     
-    init(navigationController: UINavigationController) {
+    /// Designated initializer.
+    /// 
+    /// - parameter navigationController: The target navigation controller to
+    /// be managed. SloppySwiping stores a weak reference to the navigation
+    /// controller.
+    /// 
+    /// The init method will **not** set `self` as `navigationController`'s
+    /// delegate. Although this was considered, it seemed preferable for the
+    /// caller to explicitly set the sloppy swiping instance as the navigation
+    /// controller's delegate since there may be applications that need to
+    /// swap among two or more delegates, or forward methods from an existing
+    /// delegate to the relevant methods on the sloppy swiping instance.
+    public init(navigationController: UINavigationController) {
         self.interactivePopAnimator = InteractivePopAnimator()
         self.popRecognizer = UIPanGestureRecognizer()
         self.navigationController = navigationController
@@ -137,14 +157,14 @@ class SloppySwiping: NSObject {
 
 extension SloppySwiping: UINavigationControllerDelegate {
     
-    func navigationController(_ navigationController: UINavigationController, animationControllerFor operation: UINavigationControllerOperation, from fromVC: UIViewController, to toVC: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+    public func navigationController(_ navigationController: UINavigationController, animationControllerFor operation: UINavigationControllerOperation, from fromVC: UIViewController, to toVC: UIViewController) -> UIViewControllerAnimatedTransitioning? {
         if (isInteractivelyPopping && operation == .pop) {
             return interactivePopAnimator
         }
         return nil
     }
     
-    func navigationController(_ navigationController: UINavigationController, interactionControllerFor animationController: UIViewControllerAnimatedTransitioning) -> UIViewControllerInteractiveTransitioning? {
+    public func navigationController(_ navigationController: UINavigationController, interactionControllerFor animationController: UIViewControllerAnimatedTransitioning) -> UIViewControllerInteractiveTransitioning? {
         if (isInteractivelyPopping) {
             return interactivePopAnimator
         }
@@ -159,7 +179,7 @@ fileprivate let minimumDismissalPercentage: CGFloat = 0.5
 fileprivate let minimumThresholdVelocity: CGFloat = 100.0
 
 @objc(JTSInteractivePopAnimator)
-fileprivate class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransitioning, UIViewControllerInteractiveTransitioning {
+fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTransitioning, UIViewControllerInteractiveTransitioning {
     
     // MARK: Fileprivate Properties
     
@@ -400,7 +420,7 @@ fileprivate class InteractivePopAnimator: NSObject, UIViewControllerAnimatedTran
 }
 
 @objc(JTSFrontContainerView)
-fileprivate class FrontContainerView: UIView {
+fileprivate final class FrontContainerView: UIView {
     
     // MARK: Fileprivate Properties
     
