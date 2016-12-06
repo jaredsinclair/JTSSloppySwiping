@@ -15,7 +15,7 @@ import UIKit
 /// controller's delegate (or forwarding the relevant methods from an existing
 /// delegate), and keeping a strong reference to the SloppySwiping instance.
 @objc(JTSSloppyNavigationController)
-public class SloppyNavigationController: UINavigationController {
+open class SloppyNavigationController: UINavigationController {
     
     // MARK: Private Properties
     
