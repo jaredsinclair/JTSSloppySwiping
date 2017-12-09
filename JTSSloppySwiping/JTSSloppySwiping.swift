@@ -254,7 +254,7 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
         
         let maxDistance = container.bounds.size.width
         let maxToViewOffset = maxDistance * maxBackViewTranslationPercentage
-        let resolvedToViewOffset = -maxToViewOffset
+        let resolvedToViewOffset = min(0, -maxToViewOffset) // Damn you, AutoLayout!
         let duration: TimeInterval
         let options: UIViewAnimationOptions
         
@@ -288,6 +288,7 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
             },
                        completion: { (completed) -> Void in
                         toView.transform = .identity
+                        toView.left = 0 // Damn you, AutoLayout!
                         container.addSubview(fromView)
                         self.backOverlayView.removeFromSuperview()
                         self.frontContainerView.removeFromSuperview()
@@ -338,6 +339,7 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
                             translationX: maxDistance, y: 0
                         )
                         toView.transform = .identity
+                        toView.left = 0 // Damn you, AutoLayout!
                         self.backOverlayView.alpha = 0.0
                         self.frontContainerView.dropShadowAlpha = 0.0
             },
