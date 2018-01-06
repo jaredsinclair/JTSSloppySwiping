@@ -85,6 +85,7 @@ public final class SloppySwiping: NSObject {
         self.popRecognizer = UIPanGestureRecognizer()
         self.navigationController = navigationController
         super.init()
+        self.popRecognizer.maximumNumberOfTouches = 1
         popRecognizer.addTarget(self, action: #selector(SloppySwiping.popRecognizerPanned(_:)))
         navigationController.view.addGestureRecognizer(popRecognizer)
     }
