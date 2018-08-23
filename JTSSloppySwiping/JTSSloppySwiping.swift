@@ -159,7 +159,7 @@ extension SloppySwiping: UINavigationControllerDelegate {
     
     // MARK: UINavigationControllerDelegate
     
-    public func navigationController(_ navigationController: UINavigationController, animationControllerFor operation: UINavigationControllerOperation, from fromVC: UIViewController, to toVC: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+    public func navigationController(_ navigationController: UINavigationController, animationControllerFor operation: UINavigationController.Operation, from fromVC: UIViewController, to toVC: UIViewController) -> UIViewControllerAnimatedTransitioning? {
         if (isInteractivelyPopping && operation == .pop) {
             return interactivePopAnimator
         }
@@ -256,7 +256,7 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
         let maxToViewOffset = maxDistance * maxBackViewTranslationPercentage
         let resolvedToViewOffset = -maxToViewOffset
         let duration: TimeInterval
-        let options: UIViewAnimationOptions
+        let options: UIView.AnimationOptions
         
         if abs(velocity.x) > minimumThresholdVelocity {
             options = .curveEaseOut
@@ -269,7 +269,7 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
             }
         }
         else {
-            options = UIViewAnimationOptions()
+            options = UIView.AnimationOptions()
             duration = defaultCancelPopDuration
         }
         
@@ -316,13 +316,13 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
         var comfortVelocity = velocity
         comfortVelocity.x *= 2.0
         
-        let options: UIViewAnimationOptions
+        let options: UIView.AnimationOptions
         if abs(comfortVelocity.x) > 0 {
             options = .curveEaseOut
             duration = durationForDistance(distance: maxDistance, velocity: abs(comfortVelocity.x))
         }
         else {
-            options = UIViewAnimationOptions()
+            options = UIView.AnimationOptions()
             duration = defaultCancelPopDuration
         }
         
