@@ -85,6 +85,7 @@ public final class SloppySwiping: NSObject {
         self.popRecognizer = UIPanGestureRecognizer()
         self.navigationController = navigationController
         super.init()
+        self.popRecognizer.maximumNumberOfTouches = 1
         popRecognizer.addTarget(self, action: #selector(SloppySwiping.popRecognizerPanned(_:)))
         navigationController.view.addGestureRecognizer(popRecognizer)
     }
@@ -159,7 +160,7 @@ extension SloppySwiping: UINavigationControllerDelegate {
     
     // MARK: UINavigationControllerDelegate
     
-    public func navigationController(_ navigationController: UINavigationController, animationControllerFor operation: UINavigationControllerOperation, from fromVC: UIViewController, to toVC: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+    public func navigationController(_ navigationController: UINavigationController, animationControllerFor operation: UINavigationController.Operation, from fromVC: UIViewController, to toVC: UIViewController) -> UIViewControllerAnimatedTransitioning? {
         if (isInteractivelyPopping && operation == .pop) {
             return interactivePopAnimator
         }
@@ -234,9 +235,11 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
         guard let transitionContext = activeContext else {
             return false
         }
+
+        let velocity = RTL ? velocity.flippingX : velocity
+        let translation = RTL ? translation.flippingX : translation
         
         let container = transitionContext.containerView
-        
         let percent = percentDismissedForTranslation(translation, container: container)
         
         return ((percent < minimumDismissalPercentage && velocity.x < 100.0) || velocity.x < 0)
@@ -249,14 +252,17 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
             let toView = transitionContext.view(forKey: UITransitionContextViewKey.to) else {
                 return
         }
+
+        let velocity = RTL ? velocity.flippingX : velocity
+        let translation = RTL ? translation.flippingX : translation
         
         let container = transitionContext.containerView
         
         let maxDistance = container.bounds.size.width
         let maxToViewOffset = maxDistance * maxBackViewTranslationPercentage
-        let resolvedToViewOffset = -maxToViewOffset
+        let resolvedToViewOffset = min(0, -maxToViewOffset) // Damn you, AutoLayout!
         let duration: TimeInterval
-        let options: UIViewAnimationOptions
+        let options: UIView.AnimationOptions
         
         if abs(velocity.x) > minimumThresholdVelocity {
             options = .curveEaseOut
@@ -269,7 +275,7 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
             }
         }
         else {
-            options = UIViewAnimationOptions()
+            options = UIView.AnimationOptions()
             duration = defaultCancelPopDuration
         }
         
@@ -277,24 +283,21 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
         
         activeContext?.cancelInteractiveTransition()
         
-        UIView.animate(withDuration: duration,
-                       delay: 0,
-                       options: options,
-                       animations: { () -> Void in
-                        self.frontContainerView.transform = .identity
-                        toView.transform = CGAffineTransform(translationX: resolvedToViewOffset, y: 0)
-                        self.backOverlayView.alpha = 1.0
-                        self.frontContainerView.dropShadowAlpha = 1.0
-            },
-                       completion: { (completed) -> Void in
-                        toView.transform = .identity
-                        container.addSubview(fromView)
-                        self.backOverlayView.removeFromSuperview()
-                        self.frontContainerView.removeFromSuperview()
-                        self.activeContext?.completeTransition(false)
-                        completion()
-            }
-        )
+        UIView.animate(withDuration: duration, delay: 0, options: options, animations: { () -> Void in
+            self.frontContainerView.transform = .identity
+            let translationX = RTL ? -resolvedToViewOffset : resolvedToViewOffset
+            toView.transform = CGAffineTransform(translationX: translationX, y: 0)
+            self.backOverlayView.alpha = 1.0
+            self.frontContainerView.dropShadowAlpha = 1.0
+        }, completion: { completed -> Void in
+            toView.transform = .identity
+            toView.left = 0 // Damn you, AutoLayout!
+            container.addSubview(fromView)
+            self.backOverlayView.removeFromSuperview()
+            self.frontContainerView.removeFromSuperview()
+            self.activeContext?.completeTransition(false)
+            completion()
+        })
         
     }
     
@@ -305,6 +308,9 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
             let toView = transitionContext.view(forKey: UITransitionContextViewKey.to) else {
                 return
         }
+
+        let velocity = RTL ? velocity.flippingX : velocity
+        let _ = RTL ? translation.flippingX : translation
         
         let container = transitionContext.containerView
         
@@ -316,13 +322,13 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
         var comfortVelocity = velocity
         comfortVelocity.x *= 2.0
         
-        let options: UIViewAnimationOptions
+        let options: UIView.AnimationOptions
         if abs(comfortVelocity.x) > 0 {
             options = .curveEaseOut
             duration = durationForDistance(distance: maxDistance, velocity: abs(comfortVelocity.x))
         }
         else {
-            options = UIViewAnimationOptions()
+            options = UIView.AnimationOptions()
             duration = defaultCancelPopDuration
         }
         
@@ -330,26 +336,23 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
         
         activeContext?.finishInteractiveTransition()
         
-        UIView.animate(withDuration: duration,
-                       delay: 0,
-                       options: options,
-                       animations: { () -> Void in
-                        self.frontContainerView.transform = CGAffineTransform(
-                            translationX: maxDistance, y: 0
-                        )
-                        toView.transform = .identity
-                        self.backOverlayView.alpha = 0.0
-                        self.frontContainerView.dropShadowAlpha = 0.0
-            },
-                       completion: { (completed) -> Void in
-                        fromView.removeFromSuperview()
-                        self.frontContainerView.transform = .identity
-                        self.frontContainerView.removeFromSuperview()
-                        self.backOverlayView.removeFromSuperview()
-                        self.activeContext?.completeTransition(true)
-                        completion()
-            }
-        )
+        UIView.animate(withDuration: duration, delay: 0, options: options, animations: { () -> Void in
+            let translationX = RTL ? -maxDistance : maxDistance
+            self.frontContainerView.transform = CGAffineTransform(
+                translationX: translationX, y: 0
+            )
+            toView.transform = .identity
+            toView.left = 0 // Damn you, AutoLayout!
+            self.backOverlayView.alpha = 0.0
+            self.frontContainerView.dropShadowAlpha = 0.0
+        }, completion: { completed -> Void in
+            fromView.removeFromSuperview()
+            self.frontContainerView.transform = .identity
+            self.frontContainerView.removeFromSuperview()
+            self.backOverlayView.removeFromSuperview()
+            self.activeContext?.completeTransition(true)
+            completion()
+        })
         
     }
 
@@ -375,7 +378,8 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
         frontContainerView.transform = CGAffineTransform.identity
         
         toView.frame = containerBounds
-        toView.transform = CGAffineTransform(translationX: -maxOffset, y: 0)
+        let translationX = RTL ? maxOffset : -maxOffset
+        toView.transform = CGAffineTransform(translationX: translationX, y: 0)
         
         backOverlayView.frame = containerBounds
         
@@ -390,6 +394,8 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
             let toView = transitionContext.view(forKey: UITransitionContextViewKey.to) else {
                 return
         }
+
+        let translation = RTL ? translation.flippingX : translation
         
         let container = transitionContext.containerView
         let maxDistance = container.bounds.size.width
@@ -398,11 +404,13 @@ fileprivate final class InteractivePopAnimator: NSObject, UIViewControllerAnimat
         let maxFromViewOffset = maxDistance
 
         let maxToViewOffset = maxDistance * maxBackViewTranslationPercentage
+        let frontTranslationX = (RTL ? -maxFromViewOffset : maxFromViewOffset) * percent
         let resolvedToViewOffset = -maxToViewOffset + (maxToViewOffset * percent)
-        
-        frontContainerView.transform = CGAffineTransform(translationX: maxFromViewOffset * percent, y: 0)
+        let backTranslationX = RTL ? -resolvedToViewOffset : resolvedToViewOffset
+
+        frontContainerView.transform = CGAffineTransform(translationX: frontTranslationX, y: 0)
         frontContainerView.dropShadowAlpha = (1.0 - percent)
-        toView.transform = CGAffineTransform(translationX: resolvedToViewOffset, y: 0)
+        toView.transform = CGAffineTransform(translationX: backTranslationX, y: 0)
         backOverlayView.alpha = (1.0 - percent)
         
         activeContext?.updateInteractiveTransition(percent)
@@ -452,7 +460,11 @@ fileprivate final class FrontContainerView: UIView {
     
     private func commonInit() {
         var dropShadowFrame = dropShadowView.frame
-        dropShadowFrame.origin.x = 0 - dropShadowFrame.size.width
+        if RTL {
+            dropShadowFrame.origin.x = bounds.width
+        } else {
+            dropShadowFrame.origin.x = 0 - dropShadowFrame.size.width
+        }
         dropShadowFrame.origin.y = 0
         dropShadowFrame.size.height = bounds.size.height
         dropShadowView.frame = dropShadowFrame
@@ -482,8 +494,9 @@ fileprivate final class FrontContainerView: UIView {
             UIColor(white: 0.0, alpha: 0.180).cgColor,
         ]
         let locations: [CGFloat] = [0.0, 0.34, 0.60, 0.80, 1.0]
+        let orientedLocations = RTL ? locations.reversed() : locations
         let options = CGGradientDrawingOptions()
-        if let gradient = CGGradient(colorsSpace: colorSpace, colors: colors as CFArray, locations: locations) {
+        if let gradient = CGGradient(colorsSpace: colorSpace, colors: colors as CFArray, locations: orientedLocations) {
             context?.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0), end: CGPoint(x: w, y: 0), options: options)
             stretchableShadow.image = UIGraphicsGetImageFromCurrentImageContext()
         }
@@ -492,4 +505,12 @@ fileprivate final class FrontContainerView: UIView {
         return stretchableShadow
     }
     
+}
+
+private let RTL = UIView.userInterfaceLayoutDirection(for: .unspecified) == .rightToLeft
+
+private extension CGPoint {
+    var flippingX: CGPoint {
+        return CGPoint(x: -x, y: y)
+    }
 }
