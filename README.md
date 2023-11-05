@@ -4,7 +4,7 @@ Drop-in UINavigationControllerDelegate that enables sloppy swiping (swiping from
 
 ## Requirements
 
-Requires Swift 3.0 or later (older versions supported Swift 2.x and may still suit your needs).
+- iOS/iPadOS 17.0+
 
 ## Usage
 
